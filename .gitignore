@@ -1,0 +1,5 @@
+# not store all credentials :)
+credentials.py
+
+# don't store the virtual env, we created a requirements.txt for it :)
+.venv

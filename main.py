@@ -3,12 +3,16 @@ import soundfile
 import librosa
 import numpy
 from scipy.spatial import distance
+import psycopg2
+import credentials
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 # ALL CONSTANTS
 sampleRate = 44100
 duration = 1
 recName = 'sound.wav'
 numberOfMFCC = 15
+threshold = 90
 
 
 def initialize():
@@ -42,7 +46,11 @@ def calculate(defaultMfcc):
 
     # compute euclidian distance between 2 soundfiles
     score = calculateEuclidianDistance(mfccResults, defaultMfcc)
-    print('The score is: ', score)
+
+    if score < threshold:
+        addRowToDatabase(score)
+
+
 
 
 # function to compute the MFCC
@@ -63,5 +71,39 @@ def calculateEuclidianDistance(soundMFCC, default):
     return distance.euclidean(default, soundMFCC)
 
 
+def addRowToDatabase(score):
+    try:
+        connection = psycopg2.connect(user=credentials.user,
+                                      password=credentials.password,
+                                      host=credentials.host,
+                                      port=credentials.port,
+                                      database=credentials.database)
+        cursor = connection.cursor()
+
+        postgres_insert_query = """ INSERT INTO public.consumption ("coffeeID", "score") VALUES (%s, %s)"""
+        record_to_insert = ("1", score)
+        cursor.execute(postgres_insert_query, record_to_insert)
+
+        connection.commit()
+        count = cursor.rowcount
+        print(count, "Record inserted successfully into table consumption")
+
+    except (Exception, psycopg2.Error) as error:
+        print("Failed to insert record into table consumption: ", error)
+
+    finally:
+        # closing database connection.
+        if connection:
+            cursor.close()
+            connection.close()
+            print("PostgreSQL connection is closed")
+
+
 if __name__ == '__main__':
-    initialize()
+    sched = BlockingScheduler()
+    sched.add_job(initialize, 'interval', seconds=5)
+    try:
+        sched.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+
