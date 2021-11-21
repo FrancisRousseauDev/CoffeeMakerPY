@@ -17,7 +17,7 @@ def initialize():
 
     # compute MFCC
     mfccResults = computeMeanMfcc(recording)
-    print(mfccResults)
+    print(repr(mfccResults))
 
 def computeMeanMfcc(arraySound):
     mfcc = librosa.feature.mfcc(arraySound, sr=sampleRate, dtype='float32', n_mfcc=20)
